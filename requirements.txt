@@ -1,8 +1,0 @@
-You need to use pip to install each of these requirements
-
-python-nmap
-rich
-jinja2
-
-pip install python-nmap rich jinja2
-
