@@ -1,0 +1,7 @@
+
+host,port,service,risk,recommendation
+192.168.1.254,53,DNS,Medium,Secure DNS or use internal DNS server
+192.168.1.254,80,HTTP,Medium,Enable HTTPS
+192.168.1.254,443,HTTPS,Low,Secure
+192.168.1.70,139,NetBIOS,High,Disable or segment SMB
+192.168.1.70,445,SMB,High,Disable or use modern authentication
