@@ -44,3 +44,8 @@ python scanner.py --format json
 <img width="758" height="509" alt="scanner with arguments used message" src="https://github.com/user-attachments/assets/c8316954-be59-4823-b720-bdcb8c1d14e3" />
 
 
+ # Example Web Dashboard
+ <img width="1237" height="383" alt="Web Dashboard with added buttons " src="https://github.com/user-attachments/assets/d73ef6c8-11f3-45e2-acbf-a05815053180" />
+
+
+
