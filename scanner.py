@@ -1,5 +1,3 @@
-# scanner.py
-
 import nmap
 from modules.checks import evaluate_host
 from rich.console import Console
@@ -10,36 +8,40 @@ import socket
 from datetime import datetime
 import argparse
 from jinja2 import Template
+import os
 
 console = Console(force_terminal=True)
 
 def grab_banner(ip, port):
-    """Try to grab service banners with protocol-specific handling."""
     try:
         s = socket.socket()
         s.settimeout(1)
         s.connect((ip, port))
 
-        if port == 80:  # HTTP
+        if port == 80:
             s.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
-        elif port == 443:  # HTTPS
+        elif port == 443:
             s.close()
             return "HTTPS Detected"
-        elif port == 21:  # FTP
-            pass  # FTP usually sends a banner automatically
-        elif port == 22:  # SSH
-            pass  # SSH usually sends a banner automatically
 
         banner = s.recv(1024).decode(errors="ignore").strip()
         s.close()
-
         return banner if banner else "N/A"
     except:
         return "N/A"
 
-def save_html_report(all_risks):
+
+def save_html_report(all_risks, output_dir):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    html_file = f"scan_results_{timestamp}.html"
+    html_file = os.path.join(output_dir, f"scan_results_{timestamp}.html")
+
+    high_count = sum(1 for r in all_risks if r["risk"] == "High")
+    medium_count = sum(1 for r in all_risks if r["risk"] == "Medium")
+    low_count = sum(1 for r in all_risks if r["risk"] == "Low")
+
+    grouped = {}
+    for r in all_risks:
+        grouped.setdefault(r["host"], []).append(r)
 
     template = Template("""
     <html>
@@ -47,24 +49,34 @@ def save_html_report(all_risks):
         <title>Security Scan Report</title>
         <style>
             body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-            h1 { text-align: center; }
-            table { border-collapse: collapse; width: 100%; background: white; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-            th { background: #333; color: white; }
+            h1, h2 { text-align: center; }
+            .summary { margin-bottom: 20px; text-align: center; }
+            .summary div { display: inline-block; margin: 0 15px; padding: 10px; border-radius: 5px; }
             .high { background: #ffcccc; }
             .medium { background: #fff5cc; }
             .low { background: #ccffcc; }
+            table { border-collapse: collapse; width: 100%; background: white; margin-bottom: 30px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+            th { background: #333; color: white; }
         </style>
     </head>
     <body>
         <h1>Security Scan Report</h1>
+
+        <div class="summary">
+            <div class="high">High Risks: {{ high_count }}</div>
+            <div class="medium">Medium Risks: {{ medium_count }}</div>
+            <div class="low">Low Risks: {{ low_count }}</div>
+        </div>
+
+        {% for host, risks in grouped.items() %}
+        <h2>Host: {{ host }}</h2>
         <table>
             <tr>
-                <th>Host</th><th>Port</th><th>Service</th><th>Risk</th><th>Recommendation</th><th>Banner</th>
+                <th>Port</th><th>Service</th><th>Risk</th><th>Recommendation</th><th>Banner</th>
             </tr>
             {% for r in risks %}
             <tr class="{{ r.risk|lower }}">
-                <td>{{ r.host }}</td>
                 <td>{{ r.port }}</td>
                 <td>{{ r.service }}</td>
                 <td>{{ r.risk }}</td>
@@ -73,22 +85,31 @@ def save_html_report(all_risks):
             </tr>
             {% endfor %}
         </table>
+        {% endfor %}
     </body>
     </html>
     """)
 
-    html_content = template.render(risks=all_risks)
+    html_content = template.render(
+        all_risks=all_risks,
+        grouped=grouped,
+        high_count=high_count,
+        medium_count=medium_count,
+        low_count=low_count
+    )
 
     with open(html_file, "w") as f:
         f.write(html_content)
 
-    console.print(f"[green]HTML report saved as {html_file}[/green]")
+    console.print(f"[green]Improved HTML report saved as {html_file}[/green]")
 
-def save_report(all_risks, formats):
+
+def save_report(all_risks, formats, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     if "csv" in formats or "all" in formats:
-        csv_file = f"scan_results_{timestamp}.csv"
+        csv_file = os.path.join(output_dir, f"scan_results_{timestamp}.csv")
         with open(csv_file, mode="w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=["host", "port", "service", "risk", "recommendation", "banner"])
             writer.writeheader()
@@ -96,7 +117,7 @@ def save_report(all_risks, formats):
         console.print(f"[green]CSV report saved as {csv_file}[/green]")
 
     if "txt" in formats or "all" in formats:
-        txt_file = f"scan_results_{timestamp}.txt"
+        txt_file = os.path.join(output_dir, f"scan_results_{timestamp}.txt")
         with open(txt_file, mode="w") as f:
             f.write("Security Risks Report\n")
             f.write("=" * 50 + "\n")
@@ -108,20 +129,22 @@ def save_report(all_risks, formats):
         console.print(f"[green]TXT report saved as {txt_file}[/green]")
 
     if "json" in formats or "all" in formats:
-        json_file = f"scan_results_{timestamp}.json"
+        json_file = os.path.join(output_dir, f"scan_results_{timestamp}.json")
         with open(json_file, mode="w") as f:
             json.dump(all_risks, f, indent=4)
         console.print(f"[green]JSON report saved as {json_file}[/green]")
 
-    save_html_report(all_risks)
+    save_html_report(all_risks, output_dir)
 
-def scan_network(network_range, port_range, grab_banners, output_format):
+
+def scan_network(network_range, port_range, grab_banners, output_format, output_dir):
     console.print(
         f"[bold cyan]Starting scan with settings:[/bold cyan]\n"
         f"   • Network Range: [yellow]{network_range}[/yellow]\n"
         f"   • Port Range: [yellow]{port_range}[/yellow]\n"
         f"   • Banner Grabbing: [yellow]{'Enabled' if grab_banners else 'Disabled'}[/yellow]\n"
         f"   • Report Format: [yellow]{output_format} + HTML[/yellow]\n"
+        f"   • Output Directory: [yellow]{output_dir}[/yellow]\n"
     )
 
     scanner = nmap.PortScanner()
@@ -156,10 +179,6 @@ def scan_network(network_range, port_range, grab_banners, output_format):
         severity_order = {"High": 1, "Medium": 2, "Low": 3}
         all_risks.sort(key=lambda x: severity_order.get(x["risk"], 4))
 
-        high_count = sum(1 for r in all_risks if r["risk"] == "High")
-        medium_count = sum(1 for r in all_risks if r["risk"] == "Medium")
-        low_count = sum(1 for r in all_risks if r["risk"] == "Low")
-
         table = Table(title="Security Risks Summary", show_lines=True)
         table.add_column("Host", style="cyan")
         table.add_column("Port", style="magenta")
@@ -171,24 +190,22 @@ def scan_network(network_range, port_range, grab_banners, output_format):
         for r in all_risks:
             risk_color = "red" if r["risk"] == "High" else ("yellow" if r["risk"] == "Medium" else "green")
             table.add_row(
-                r["host"],
-                str(r["port"]),
-                r["service"],
+                r["host"], str(r["port"]), r["service"],
                 f"[{risk_color}]{r['risk']}[/{risk_color}]",
-                r["recommendation"],
-                r["banner"]
+                r["recommendation"], r["banner"]
             )
 
         console.print(table)
         console.print(
-            f"\n[bold red]High Risks:[/bold red] {high_count}   "
-            f"[bold yellow]Medium Risks:[/bold yellow] {medium_count}   "
-            f"[bold green]Low Risks:[/bold green] {low_count}\n"
+            f"\n[bold red]High Risks:[/bold red] {sum(1 for r in all_risks if r['risk']=='High')}   "
+            f"[bold yellow]Medium Risks:[/bold yellow] {sum(1 for r in all_risks if r['risk']=='Medium')}   "
+            f"[bold green]Low Risks:[/bold green] {sum(1 for r in all_risks if r['risk']=='Low')}\n"
         )
 
-        save_report(all_risks, output_format)
+        save_report(all_risks, output_format, output_dir)
     else:
         console.print("[bold green]No misconfigurations detected.[/bold green]")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Misconfiguration Scanner for Small Business Devices")
@@ -196,12 +213,24 @@ if __name__ == "__main__":
     parser.add_argument("--ports", default="1-1000", help="Port range to scan (default: 1-1000)")
     parser.add_argument("--no-banner", action="store_true", help="Disable banner grabbing")
     parser.add_argument("--format", choices=["csv", "json", "txt", "all"], default="all", help="Report format to save (default: all)")
+    parser.add_argument("--quick", action="store_true", help="Quick scan of common ports only")
+    parser.add_argument("--full", action="store_true", help="Full scan of all 65535 ports")
+    parser.add_argument("--output-dir", default="output", help="Directory to save reports (default: ./output)")
 
     args = parser.parse_args()
 
+    # Determine port range
+    if args.quick:
+        port_range = "21,22,23,25,53,80,110,139,143,443,445,3389,8080,8443"
+    elif args.full:
+        port_range = "1-65535"
+    else:
+        port_range = args.ports
+
     scan_network(
         network_range=args.range,
-        port_range=args.ports,
+        port_range=port_range,
         grab_banners=not args.no_banner,
-        output_format=args.format
+        output_format=args.format,
+        output_dir=args.output_dir
     )
