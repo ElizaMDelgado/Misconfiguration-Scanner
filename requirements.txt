@@ -1,2 +1,1 @@
-
-pip install python-nmap rich jinja2
+pip install python-nmap rich jinja2 requests
