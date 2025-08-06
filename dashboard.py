@@ -27,105 +27,145 @@ def index():
     low_count = risk_counts.get("Low", 0)
 
     service_counts = Counter([r["service"] for r in data])
+    risk_data = [high_count, medium_count, low_count]
     service_labels = list(service_counts.keys())
     service_values = list(service_counts.values())
 
     html = """
-    <html>
-    <head>
-        <title>Misconfiguration Scanner Dashboard</title>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <style>
-            body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-            h1 { text-align: center; }
-            .top-controls { text-align: center; margin-bottom: 20px; }
-            .btn {
-                color: white; border: none; padding: 6px 12px; cursor: pointer;
-                border-radius: 4px; margin-left: 10px; text-decoration: none;
-            }
-            .refresh-btn { background: #007BFF; }
-            .refresh-btn:hover { background: #0056b3; }
-            .download-btn { background: #28a745; }
-            .download-btn:hover { background: #1e7e34; }
-            .summary { text-align: center; margin-bottom: 20px; }
-            .summary div { display: inline-block; margin: 0 15px; padding: 10px; border-radius: 5px; }
-            .high { background: #ffcccc; }
-            .medium { background: #fff5cc; }
-            .low { background: #ccffcc; }
-            .charts { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; }
-            canvas { border: 1px solid #ccc; }
-        </style>
-    </head>
-    <body>
-        <h1>Misconfiguration Scanner Dashboard</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Misconfiguration Scanner Dashboard</title>
+    <!-- ✅ FIXED: Using Chart.js CDN instead of missing local file -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        h1 { text-align: center; }
+        .top-controls { text-align: center; margin-bottom: 20px; }
+        .btn {
+            color: white; border: none; padding: 6px 12px; cursor: pointer;
+            border-radius: 4px; margin-left: 10px; text-decoration: none;
+        }
+        .refresh-btn { background: #007BFF; }
+        .refresh-btn:hover { background: #0056b3; }
+        .download-btn { background: #28a745; }
+        .download-btn:hover { background: #1e7e34; }
+        .summary { text-align: center; margin-bottom: 20px; }
+        .summary div { display: inline-block; margin: 0 15px; padding: 10px; border-radius: 5px; }
+        .high { background: #ffcccc; }
+        .medium { background: #fff5cc; }
+        .low { background: #ccffcc; }
+        .charts { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; }
+        canvas { 
+            border: 1px solid #ccc; 
+            width: 300px !important;
+            height: 220px !important;
+        }
+        table { width: 100%; background: white; border-collapse: collapse; }
+        th, td { padding: 6px; border: 1px solid #ccc; text-align: center; }
+        th { background: #333; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Misconfiguration Scanner Dashboard</h1>
 
-        <div class="top-controls">
-            <form method="get" style="display:inline;">
-                <label><strong>Select Report:</strong></label>
-                <select name="file" onchange="this.form.submit()">
-                    {% for f in files %}
-                        <option value="{{f}}" {% if f == selected_file %}selected{% endif %}>{{f}}</option>
-                    {% endfor %}
-                </select>
-            </form>
+    <div class="top-controls">
+        <form method="get" style="display:inline;">
+            <label><strong>Select Report:</strong></label>
+            <select name="file" onchange="this.form.submit()">
+                {% for f in files %}
+                    <option value="{{f}}" {% if f == selected_file %}selected{% endif %}>{{f}}</option>
+                {% endfor %}
+            </select>
+        </form>
 
-            <button class="btn refresh-btn" onclick="location.reload()">Refresh Reports</button>
-            <a class="btn download-btn" href="/download/{{ selected_file }}">Download Report</a>
-        </div>
+        <button class="btn refresh-btn" onclick="location.reload()">Refresh Reports</button>
+        <a class="btn download-btn" href="/download/{{ selected_file }}">Download Report</a>
+    </div>
 
-        <div class="summary">
-            <div class="high">High Risks: {{ high_count }}</div>
-            <div class="medium">Medium Risks: {{ medium_count }}</div>
-            <div class="low">Low Risks: {{ low_count }}</div>
-        </div>
+    <div class="summary">
+        <div class="high">High Risks: {{ high_count }}</div>
+        <div class="medium">Medium Risks: {{ medium_count }}</div>
+        <div class="low">Low Risks: {{ low_count }}</div>
+    </div>
 
-        <div class="charts">
-            <canvas id="riskChart" width="180" height="180"></canvas>
-            <canvas id="serviceChart" width="220" height="180"></canvas>
-        </div>
+    <div class="charts">
+        <canvas id="riskChart"></canvas>
+        <canvas id="serviceChart"></canvas>
+    </div>
 
-        <table style="width: 100%; background: white; border-collapse: collapse;">
-            <tr><th>Host</th><th>Port</th><th>Service</th><th>Risk</th><th>Recommendation</th><th>Banner</th></tr>
-            {% for r in data %}
-            <tr style="background-color:{% if r['risk']=='High' %}#ffcccc{% elif r['risk']=='Medium' %}#fff5cc{% else %}#ccffcc{% endif %}">
-                <td>{{ r['host'] }}</td>
-                <td>{{ r['port'] }}</td>
-                <td>{{ r['service'] }}</td>
-                <td>{{ r['risk'] }}</td>
-                <td>{{ r['recommendation'] }}</td>
-                <td>{{ r['banner'] }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+    <!-- Embed JSON data into page -->
+    <script id="risk-data" type="application/json">{{ risk_data | tojson }}</script>
+    <script id="service-labels" type="application/json">{{ service_labels | tojson }}</script>
+    <script id="service-values" type="application/json">{{ service_values | tojson }}</script>
 
-        <script>
-        new Chart(document.getElementById('riskChart'), {
+    <table>
+        <tr>
+            <th>Host</th>
+            <th>Port</th>
+            <th>Service</th>
+            <th>Risk</th>
+            <th>Recommendation</th>
+            <th>Best Practice</th>
+            <th>Banner</th>
+        </tr>
+        {% for r in data %}
+        <tr style="background-color:{% if r['risk']=='High' %}#ffcccc{% elif r['risk']=='Medium' %}#fff5cc{% else %}#ccffcc{% endif %}">
+            <td>{{ r['host'] }}</td>
+            <td>{{ r['port'] }}</td>
+            <td>{{ r['service'] }}</td>
+            <td>{{ r['risk'] }}</td>
+            <td>{{ r['recommendation'] }}</td>
+            <td>{{ r.get('best_practice', '') }}</td>
+            <td>{{ r['banner'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <script>
+    const softwareRenderPlugin = {
+        id: 'softwareRenderer',
+        afterDraw: (chart) => {
+            const ctx = chart.canvas.getContext('2d', { willReadFrequently: true });
+            ctx.imageSmoothingEnabled = true;
+        }
+    };
+
+    window.onload = function () {
+        const riskData = JSON.parse(document.getElementById("risk-data").textContent);
+        const serviceLabels = JSON.parse(document.getElementById("service-labels").textContent);
+        const serviceValues = JSON.parse(document.getElementById("service-values").textContent);
+
+        new Chart(document.getElementById('riskChart').getContext('2d', { willReadFrequently: true }), {
             type: 'pie',
+            plugins: [softwareRenderPlugin],
             data: {
                 labels: ['High', 'Medium', 'Low'],
                 datasets: [{
-                    data: [{{ high_count }}, {{ medium_count }}, {{ low_count }}],
+                    data: riskData,
                     backgroundColor: ['#ff4d4d', '#ffd633', '#5cd65c']
                 }]
             },
             options: { responsive: false, maintainAspectRatio: false }
         });
 
-        new Chart(document.getElementById('serviceChart'), {
+        new Chart(document.getElementById('serviceChart').getContext('2d', { willReadFrequently: true }), {
             type: 'bar',
+            plugins: [softwareRenderPlugin],
             data: {
-                labels: {{ service_labels | tojson }},
+                labels: serviceLabels,
                 datasets: [{
                     label: 'Services Detected',
-                    data: {{ service_values | tojson }},
+                    data: serviceValues,
                     backgroundColor: '#4da6ff'
                 }]
             },
             options: { responsive: false, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
         });
-        </script>
-    </body>
-    </html>
+    };
+    </script>
+</body>
+</html>
     """
 
     return render_template_string(
@@ -136,6 +176,7 @@ def index():
         high_count=high_count,
         medium_count=medium_count,
         low_count=low_count,
+        risk_data=risk_data,
         service_labels=service_labels,
         service_values=service_values
     )
