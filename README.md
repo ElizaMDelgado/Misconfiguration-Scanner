@@ -10,10 +10,15 @@ It scans for open ports, insecure services, weak configurations, and generates C
 - ✅ Color-coded terminal output
 - ✅ CSV, TXT, JSON, and HTML report generation
 - ✅ Command-line arguments for flexibility
+- ✅ Web dashboard for visual report review
 
 # Installation
 1. Install Python (3.10+ recommended)
 2. Install Dependencies
+
+```bash
+pip install python-nmap rich jinja2 flask requests
+```
 
 - pip python-nmap
 - pip rich
