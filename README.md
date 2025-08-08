@@ -18,10 +18,14 @@ It scans for open ports, insecure services, weak configurations, and generates C
 - pip python-nmap
 - pip rich
 - pip jinja2
+- pip requests
 
 # Usage
 ```bash
 python scanner.py
+```
+```bash
+python dashboard.py
 ```
 
 # Custom Network Range
