@@ -14,7 +14,30 @@ It scans for open ports, insecure services, weak configurations, and generates C
 
 # Installation
 1. Install Python (3.10+ recommended)
-2. Install Dependencies
+2. Download Nmap for Windows:
+   Go to the official site: https://nmap.org/download.html
+
+    Click on "Latest stable release self-installer" (e.g., nmap-7.94-setup.exe)
+
+    **Install Nmap:**
+
+   Run the installer.
+   During installation, make sure the checkbox "Add Nmap to the system PATH" is checked.
+
+   Verify Nmap Installation:
+
+   Open a new PowerShell or Command Prompt window.
+
+Run:
+   ```bash
+   nmap --version
+   ```
+  You should see output like:
+  ```bash
+   Nmap version 7.94 ( https://nmap.org )
+  ```
+
+4. Install Dependencies
 
 ```bash
 pip install python-nmap rich jinja2 flask requests
