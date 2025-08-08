@@ -20,13 +20,36 @@ It scans for open ports, insecure services, weak configurations, and generates C
 - pip jinja2
 - pip requests
 
-# Usage
+# How to Run the Scanner & Dashboard
+1. Run the Scanner
+   
 ```bash
 python scanner.py
 ```
+Customize with:
+- No-banner to skip banner grabbing (faster)
+- Format json to choose output format (json, csv, all)
+- Output-dir results to change the output folder
+The scan results will be saved in the output/ directory.
+
+ 2. Launch the Dashboard
+After scanning, start the dashboard:
+
 ```bash
 python dashboard.py
 ```
+Then open your browser and visit:
+http://127.0.0.1:5000
+
+There, you can:
+
+- View scan reports and risk summaries
+- Switch between saved scan files
+- Download results
+- Explore visual risk charts
+
+
+
 
 # Custom Network Range
 ```bash
