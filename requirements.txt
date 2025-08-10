@@ -1,1 +1,1 @@
-pip install python-nmap rich jinja2 requests
+pip install python-nmap rich jinja2 flask requests
